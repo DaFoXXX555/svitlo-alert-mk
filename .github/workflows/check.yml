@@ -56,6 +56,11 @@ jobs:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: |
           node src/send.js
+          curl --fail --silent --show-error --retry 3 --retry-all-errors \
+            -H "Content-Type: application/json" \
+            --data-binary @ntfy-payload.json \
+            "$NTFY_SERVER"
+          rm ntfy-payload.json
           mkdir -p .ntfy-sent
           date -u > .ntfy-sent/sent.txt
       - name: Запомнить отправленное уведомление
