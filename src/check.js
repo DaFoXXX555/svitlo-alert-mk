@@ -1,20 +1,15 @@
-import { chromium } from "playwright";
-import fs from "node:fs/promises";
-
-const config = JSON.parse(await fs.readFile(new URL("../config.json", import.meta.url), "utf8"));
-const browser = await chromium.launch({ headless: true });
-const page = await browser.newPage({ locale: "uk-UA", timezoneId: config.timezone });
-try {
-  await page.goto(config.siteUrl, { waitUntil: "networkidle", timeout: 90000 });
-  const data = await page.evaluate(async () => {
-    const text = await (await fetch("/js/app.js")).text();
-    const needles = ["schedule/active", "time-series", "outage_queue", "queue_id", "status_id", "schedule_id"];
-    return needles.map((needle) => {
-      const i = text.indexOf(needle);
-      return { needle, snippet: i < 0 ? "NOT_FOUND" : text.slice(Math.max(0, i - 1200), i + 2500) };
-    });
-  });
-  console.log(JSON.stringify(data, null, 2));
-} finally {
-  await browser.close();
+const base = "https://off.energy.mk.ua";
+const headers = {
+  "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36",
+  "accept": "application/json, text/plain, */*",
+  "referer": base + "/"
+};
+const home = await fetch(base + "/", { headers });
+console.log("HOME", home.status);
+const cookies = home.headers.getSetCookie?.().map(x => x.split(";")[0]).join("; ") || "";
+for (const path of ["/api/outage-queue/by-type/3", "/api/schedule/time-series", "/api/v2/schedule/active"]) {
+  const response = await fetch(base + path, { headers: { ...headers, cookie: cookies } });
+  const text = await response.text();
+  console.log(path, response.status, text.slice(0, 2000));
+  if (!response.ok) process.exitCode = 1;
 }
