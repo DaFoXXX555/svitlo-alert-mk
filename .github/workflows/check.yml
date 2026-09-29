@@ -55,17 +55,7 @@ jobs:
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: |
-          if [ -z "$NTFY_TOPIC" ]; then
-            echo "::error::Добавьте секрет NTFY_TOPIC в настройках репозитория"
-            exit 1
-          fi
-          curl --fail --silent --show-error \
-            -H "Topic: $NTFY_TOPIC" \
-            -H "Title: Svitlo - group 3.1" \
-            -H "Priority: high" \
-            -H "Tags: warning,electric_plug" \
-            --data-binary @notification.txt \
-            "$NTFY_SERVER"
+          node src/send.js
           mkdir -p .ntfy-sent
           date -u > .ntfy-sent/sent.txt
       - name: Запомнить отправленное уведомление
