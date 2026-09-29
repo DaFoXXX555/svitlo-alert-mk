@@ -1,0 +1,12 @@
+{
+  "name": "svitlo-alert-mk",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node src/check.js"
+  },
+  "dependencies": {
+    "playwright": "1.55.1"
+  }
+}
