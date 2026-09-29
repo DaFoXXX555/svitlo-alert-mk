@@ -41,7 +41,7 @@ jobs:
       - name: Проверить официальный график
         id: check
         env:
-          TEST_NOTIFICATION: ${{ github.event_name == 'push' && 'true' || inputs.test_notification || 'false' }}
+          TEST_NOTIFICATION: ${{ inputs.test_notification || 'false' }}
         run: npm run check
       - name: Проверить, было ли уведомление отправлено
         if: steps.check.outputs.alert_key != ''
