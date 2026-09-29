@@ -1,12 +1,31 @@
-name: Проверка сайта отключений
+name: Уведомления об отключении света
 
 on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+    inputs:
+      test_notification:
+        description: "Отправить тестовое уведомление"
+        required: false
+        type: boolean
+        default: false
   push:
     branches: [main]
-  workflow_dispatch:
+    paths:
+      - "src/**"
+      - "config.json"
+      - ".github/workflows/check.yml"
 
 permissions:
   contents: read
+
+env:
+  NTFY_SERVER: https://ntfy.sh
+
+concurrency:
+  group: svitlo-check
+  cancel-in-progress: false
 
 jobs:
   check:
@@ -19,5 +38,39 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
-      - name: Проверить официальный источник
+      - name: Проверить официальный график
+        id: check
+        env:
+          TEST_NOTIFICATION: ${{ inputs.test_notification || 'false' }}
         run: npm run check
+      - name: Проверить, было ли уведомление отправлено
+        if: steps.check.outputs.alert_key != ''
+        id: sent
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .ntfy-sent
+          key: svitlo-${{ steps.check.outputs.alert_key }}
+      - name: Отправить push-уведомление
+        if: steps.check.outputs.alert_key != '' && steps.sent.outputs.cache-hit != 'true'
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          if [ -z "$NTFY_TOPIC" ]; then
+            echo "::error::Добавьте секрет NTFY_TOPIC в настройках репозитория"
+            exit 1
+          fi
+          curl --fail --silent --show-error \
+            -H "Topic: $NTFY_TOPIC" \
+            -H "Title: Свет — группа 3.1" \
+            -H "Priority: high" \
+            -H "Tags: warning,electric_plug" \
+            --data-binary @notification.txt \
+            "$NTFY_SERVER"
+          mkdir -p .ntfy-sent
+          date -u > .ntfy-sent/sent.txt
+      - name: Запомнить отправленное уведомление
+        if: steps.check.outputs.alert_key != '' && steps.sent.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .ntfy-sent
+          key: svitlo-${{ steps.check.outputs.alert_key }}
