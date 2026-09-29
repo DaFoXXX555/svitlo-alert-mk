@@ -61,7 +61,7 @@ jobs:
           fi
           curl --fail --silent --show-error \
             -H "Topic: $NTFY_TOPIC" \
-            -H "Title: Свет — группа 3.1" \
+            -H "Title: Svitlo - group 3.1" \
             -H "Priority: high" \
             -H "Tags: warning,electric_plug" \
             --data-binary @notification.txt \
