@@ -100,23 +100,36 @@ for (const item of raw) {
 }
 
 const now = Date.now();
-const minNotice = Math.max(30, Number(config.notifyBeforeMinutes) - 25);
-const maxNotice = Number(config.notifyBeforeMinutes) + 10;
-const next = intervals.find(x => {
-  const minutes = (x.start - now) / 60000;
-  return minutes >= minNotice && minutes <= maxNotice;
-});
+const upcoming = intervals.filter(x => x.end > now);
+const next = upcoming[0];
 if (!next) {
   await setOutput("alert_key", "");
-  console.log(`Группа ${config.group}: уведомлять сейчас не о чем. Активных интервалов: ${intervals.length}.`);
+  console.log(`Группа ${config.group}: будущих или текущих отключений нет. Интервалов в ответе сайта: ${intervals.length}.`);
   process.exit(0);
+}
+
+const minutes = Math.round((next.start - now) / 60000);
+let headline;
+let countdown;
+if (minutes <= 0) {
+  headline = "⚠️ По графику отключение уже началось";
+  countdown = "Проверьте текущую ситуацию на официальном сайте.";
+} else if (minutes <= 90) {
+  headline = "⚠️ Скоро возможно отключение света";
+  countdown = `До начала: примерно ${minutes} мин.`;
+} else {
+  headline = "⚠️ В графике появилось отключение света";
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  countdown = `До начала: примерно ${hours} ч. ${rest} мин.`;
 }
 
 const key = `${config.group}-${new Date(next.start).toISOString()}-${new Date(next.end).toISOString()}`.replace(/[^a-zA-Z0-9_.-]/g, "_");
 const message = [
-  "⚠️ Примерно через час возможно отключение света",
+  headline,
   `Группа: ${config.group}`,
   `Время: ${format(next.start, config.timezone)} — ${format(next.end, config.timezone).split(", ").at(-1)}`,
+  countdown,
   `Источник: ${config.siteUrl}`
 ].join("\n") + "\n";
 await fs.writeFile("notification.txt", message);
